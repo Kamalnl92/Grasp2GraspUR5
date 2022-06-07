@@ -26,8 +26,9 @@ def main(args):
     goal_obj_idx = args.goal_obj_idx
 
     # --------------- Workspace setting -----------------
-    workspace_limits = np.asarray([[-0.724, -0.276], [-0.224, 0.224], [-0.0001, 0.4]]) # Cols: min max, Rows: x y z (define workspace limits in robot coordinates)
-    
+    # workspace_limits = np.asarray([[-0.724, -0.276], [-0.224, 0.224], [-0.0001, 0.4]]) # Cols: min max, Rows: x y z (define workspace limits in robot coordinates)
+    # workspace_limits = np.asarray([[-0.563, -0.115], [-0.231, 0.217], [-0.0001, 0.4]])
+    workspace_limits = np.asarray([[-0.688, -0.24], [-0.231, 0.217], [-0.0001, 1.4]])
     # ------------- Training stage options -------------
     stage = args.stage
     max_push_episode_length = args.max_push_episode_length
@@ -65,7 +66,7 @@ def main(args):
     explore_snapshot_file = os.path.abspath(args.explore_snapshot_file) if load_explore_snapshot else None
 
     # Set random seed
-    np.random.seed(random_seed)
+    # np.random.seed(random_seed)
 
     # ------- Goal-conditioned option ------------
     goal_conditioned = args.goal_conditioned
@@ -152,9 +153,9 @@ def main(args):
                 # For goal-conditioned case, cut grasp predictions with goal mask
                 if goal_conditioned:
 
-                    obj_contour = robot.obj_contour(nonlocal_variables['goal_obj_idx'])
+                    # obj_contour = robot.obj_contour(nonlocal_variables['goal_obj_idx'])
                     dummymask = np.zeros(color_heightmap.shape[:2], np.uint8)
-                    utils.get_goal_coordinates(obj_contour, dummymask, workspace_limits, heightmap_resolution)
+                    # utils.get_goal_coordinates(obj_contour, dummymask, workspace_limits, heightmap_resolution)
                     mask = robot.mask(color_heightmap, goal_object)
                     mask = np.float32(mask)  # converting cause cv2 handels float32 and not float64
 
@@ -167,7 +168,23 @@ def main(args):
                     push_predictions = push_predictions / 255
 
                     # if goal object is pushed completely out of scene, restart scene
-                    if np.max(obj_contour[:, 0]) < 0 or np.max(obj_contour[:, 1]) < 0 or np.min(obj_contour[:, 0]) > 224 or np.min(obj_contour[:, 1]) > 224:
+                    # if np.max(obj_contour[:, 0]) < 0 or np.max(obj_contour[:, 1]) < 0 or np.min(obj_contour[:, 0]) > 224 or np.min(obj_contour[:, 1]) > 224:
+                    #     nonlocal_variables['new_episode_flag'] = 1
+                    #     robot.restart_sim()
+                    #     robot.add_objects()
+                    #     if is_testing: # If at end of test run, re-load original weights (before test run)
+                    #         trainer.model.load_state_dict(torch.load(snapshot_file))
+                    #     trainer.clearance_log.append([trainer.iteration])
+                    #     logger.write_to_log('clearance', trainer.clearance_log)
+                    #     if is_testing and len(trainer.clearance_log) >= max_test_trials:
+                    #         exit_called = True # Exit after training thread (backprop and saving labels)
+                    #     continue
+                    latest_color_img, latest_depth_img = robot.get_camera_data()
+                    latest_depth_img = latest_depth_img * robot.cam_depth_scale # Apply depth scale from calibration
+                    latest_color_heightmap, latest_depth_heightmap = utils.get_heightmap(latest_color_img, latest_depth_img, robot.cam_intrinsics, robot.cam_pose, workspace_limits, heightmap_resolution)
+                    latest_goal_mask_heightmap = robot.mask(latest_color_heightmap, goal_object)
+                    if np.sum(latest_goal_mask_heightmap) == 0:
+                        print("I do not see the goal object in the scene")
                         nonlocal_variables['new_episode_flag'] = 1
                         robot.restart_sim()
                         robot.add_objects()
@@ -262,16 +279,25 @@ def main(args):
                         predicted_value = np.max(push_predictions)
 
                     elif nonlocal_variables['primitive_action'] == 'grasp':
-                        if goal_conditioned:
+                        # if goal_conditioned:
 
-                            obj_contour = robot.obj_contour(nonlocal_variables['goal_obj_idx'])
-                            obj_contour[:, 0] = (obj_contour[:, 0] - workspace_limits[0][0]) / heightmap_resolution  # drop_x to pixel_dimension2
-                            obj_contour[:, 1] = (obj_contour[:, 1] - workspace_limits[1][0]) / heightmap_resolution  # drop_y to pixel_dimension1
-                            obj_contour = np.array(obj_contour).astype(int)
+                            # obj_contour = robot.obj_contour(nonlocal_variables['goal_obj_idx'])
+                            # obj_contour[:, 0] = (obj_contour[:, 0] - workspace_limits[0][0]) / heightmap_resolution  # drop_x to pixel_dimension2
+                            # obj_contour[:, 1] = (obj_contour[:, 1] - workspace_limits[1][0]) / heightmap_resolution  # drop_y to pixel_dimension1
+                            # obj_contour = np.array(obj_contour).astype(int)
                             # if goal object is pushed completely out of scene, restart episode
-                            if np.max(obj_contour[:, 0]) < 0 or np.max(obj_contour[:, 1]) < 0 or np.min(obj_contour[:, 0]) > 224 or np.min(obj_contour[:, 1]) > 224:
-                                nonlocal_variables['new_episode_flag'] = 1
-                                nonlocal_variables['restart_scene'] = robot.num_obj / 2
+                            # if np.max(obj_contour[:, 0]) < 0 or np.max(obj_contour[:, 1]) < 0 or np.min(obj_contour[:, 0]) > 224 or np.min(obj_contour[:, 1]) > 224:
+                            #     nonlocal_variables['new_episode_flag'] = 1
+                            #     nonlocal_variables['restart_scene'] = robot.num_obj / 2
+
+                        latest_color_img, latest_depth_img = robot.get_camera_data()
+                        latest_depth_img = latest_depth_img * robot.cam_depth_scale # Apply depth scale from calibration
+                        latest_color_heightmap, latest_depth_heightmap = utils.get_heightmap(latest_color_img, latest_depth_img, robot.cam_intrinsics, robot.cam_pose, workspace_limits, heightmap_resolution)
+                        latest_goal_mask_heightmap = robot.mask(latest_color_heightmap, goal_object)
+                        if np.sum(latest_goal_mask_heightmap) == 0:
+                            print("I do not see the goal object in the scene")
+                            nonlocal_variables['new_episode_flag'] = 1
+                            nonlocal_variables['restart_scene'] = robot.num_obj / 2
 
                         nonlocal_variables['best_pix_ind'] = np.unravel_index(np.argmax(grasp_predictions), grasp_predictions.shape)
                         predicted_value = np.max(grasp_predictions)
@@ -348,8 +374,8 @@ def main(args):
 
                 # Execute primitive
                 if nonlocal_variables['primitive_action'] == 'push':
-                    nonlocal_variables['push_success'] = robot.push(primitive_position, best_rotation_angle, workspace_limits)
-                    print('Push successful: %r' % (nonlocal_variables['push_success']))
+                    nonlocal_variables['push_success'] = robot.grasp_non_goal_obj(primitive_position, best_rotation_angle, workspace_limits)
+                    print('Grasp obstacles: %r' % (nonlocal_variables['push_success']))
                     trainer.grasp_obj_log.append([-1])
                     logger.write_to_log('grasp-obj', trainer.grasp_obj_log) 
                     if stage == 'push_only':
@@ -494,13 +520,13 @@ def main(args):
         valid_depth_heightmap[np.isnan(valid_depth_heightmap)] = 0
         if goal_conditioned:
 
-            if is_testing and not random_scene_testing:
-                obj_contour = robot.obj_contour(nonlocal_variables['goal_obj_idx'])
-            else:
-                obj_contour = robot.obj_contour(nonlocal_variables['goal_obj_idx'])
+            # if is_testing and not random_scene_testing:
+            #     obj_contour = robot.obj_contour(nonlocal_variables['goal_obj_idx'])
+            # else:
+            #     obj_contour = robot.obj_contour(nonlocal_variables['goal_obj_idx'])
 
             dummy_mask = np.zeros(color_heightmap.shape[:2], np.uint8)
-            utils.get_goal_coordinates(obj_contour, dummy_mask, workspace_limits, heightmap_resolution)
+            # utils.get_goal_coordinates(obj_contour, dummy_mask, workspace_limits, heightmap_resolution)
 
             goal_mask_heightmap = robot.mask(color_heightmap, goal_object)
             goal_mask_heightmap = np.float32(goal_mask_heightmap) # converting cause cv2 handels float32 and not float64
@@ -573,7 +599,7 @@ def main(args):
                 if grasp_explore_actions:
                     # Run forward pass with network to get affordances
                     push_predictions, grasp_predictions, state_feat = trainer.forward(color_heightmap, valid_depth_heightmap, is_volatile=True, grasp_explore_actions=True)
-                    obj_contour = robot.obj_contour(nonlocal_variables['goal_obj_idx'])
+                    # obj_contour = robot.obj_contour(nonlocal_variables['goal_obj_idx'])
 
                     mask = robot.mask(color_heightmap, goal_object)
                     mask = np.float32(mask)  # converting cause cv2 handels float32 and not float64
@@ -691,7 +717,7 @@ def main(args):
                     
                     if grasp_goal_conditioned or goal_conditioned:
 
-                        obj_contour = robot.obj_contour(nonlocal_variables['goal_obj_idx'])
+                        # obj_contour = robot.obj_contour(nonlocal_variables['goal_obj_idx'])
                         sample_goal_mask_heightmap = robot.mask(color_heightmap, goal_object)
                         sample_goal_mask_heightmap = np.float32(sample_goal_mask_heightmap)
                         
@@ -765,8 +791,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Train robotic agents to learn how to plan complementary pushing and grasping actions for manipulation with deep reinforcement learning in PyTorch.')
 
     # --------------- Setup options ---------------
-    parser.add_argument('--obj_mesh_dir', dest='obj_mesh_dir', action='store', default='objects/blocks',                  help='directory containing 3D mesh files (.obj) of objects to be added to simulation')
-    parser.add_argument('--num_obj', dest='num_obj', type=int, action='store', default=10,                                help='number of objects to add to simulation')
+    parser.add_argument('--obj_mesh_dir', dest='obj_mesh_dir', action='store', default='objects/highBlocks',                  help='directory containing 3D mesh files (.obj) of objects to be added to simulation')
+    parser.add_argument('--num_obj', dest='num_obj', type=int, action='store', default=7,                                help='number of objects to add to simulation')
     parser.add_argument('--heightmap_resolution', dest='heightmap_resolution', type=float, action='store', default=0.002, help='meters per pixel of heightmap')
     parser.add_argument('--random_seed', dest='random_seed', type=int, action='store', default=1234,                      help='random seed for simulation and neural net initialization')
     parser.add_argument('--cpu', dest='force_cpu', action='store_true', default=False,                                    help='force code to run in CPU mode')
