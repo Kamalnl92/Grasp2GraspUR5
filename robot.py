@@ -575,7 +575,7 @@ class Robot(object):
             sim_ret, gripper_joint_position = vrep.simxGetJointPosition(self.sim_client, RG2_gripper_handle, vrep.simx_opmode_blocking)
             counter+=1
             print(counter)
-            if counter == 1:
+            if counter == 100:
                 print("girpper couldn't open restarting simulation")
                 self.restart_sim()
                 self.add_objects()
@@ -622,8 +622,8 @@ class Robot(object):
         listSpawned = listSpawned[0:self.num_obj]
         self.sim.callScriptFunction('checkCollision', self.sim.scripttype_mainscript, listSpawned)
 
-    def stop_check_collision(self):
-        self.sim.callScriptFunction('noCheckCollision', self.sim.scripttype_mainscript)
+    # def stop_check_collision(self):
+    #     self.sim.callScriptFunction('noCheckCollision', self.sim.scripttype_mainscript)
 
 
 
