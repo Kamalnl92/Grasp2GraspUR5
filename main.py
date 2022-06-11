@@ -809,7 +809,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Train robotic agents to learn how to plan complementary pushing and grasping actions for manipulation with deep reinforcement learning in PyTorch.')
 
     # --------------- Setup options ---------------
-    parser.add_argument('--obj_mesh_dir', dest='obj_mesh_dir', action='store', default='objects/highBlocks',                  help='directory containing 3D mesh files (.obj) of objects to be added to simulation')
+    parser.add_argument('--obj_mesh_dir', dest='obj_mesh_dir', action='store', default='/home/s3675319/grasp2grasp/Grasp2GraspUR5/objects/highBlocks',                  help='directory containing 3D mesh files (.obj) of objects to be added to simulation')
     parser.add_argument('--num_obj', dest='num_obj', type=int, action='store', default=7,                                help='number of objects to add to simulation')
     parser.add_argument('--heightmap_resolution', dest='heightmap_resolution', type=float, action='store', default=0.002, help='meters per pixel of heightmap')
     parser.add_argument('--random_seed', dest='random_seed', type=int, action='store', default=1234,                      help='random seed for simulation and neural net initialization')

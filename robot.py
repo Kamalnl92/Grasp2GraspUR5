@@ -171,7 +171,7 @@ class Robot(object):
         # 7 random positions from the saved location orientations
         positions = np.random.choice(7, 7, replace=False)
         scene = np.random.choice(32, 1, replace=False)
-        scenePositions = np.load('locationsOrientations.npy')
+        scenePositions = np.load('/home/s3675319/grasp2grasp/Grasp2GraspUR5/locationsOrientations.npy')
         # flag = 0
         for object_idx in range(obj_number):
             curr_mesh_file = os.path.join(self.obj_mesh_dir, self.mesh_list[self.obj_mesh_ind[object_idx]])
