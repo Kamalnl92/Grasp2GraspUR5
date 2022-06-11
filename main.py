@@ -184,10 +184,11 @@ def main(args):
                     latest_color_heightmap, latest_depth_heightmap = utils.get_heightmap(latest_color_img, latest_depth_img, robot.cam_intrinsics, robot.cam_pose, workspace_limits, heightmap_resolution)
                     latest_goal_mask_heightmap = robot.mask(latest_color_heightmap, goal_object)
                     if np.sum(latest_goal_mask_heightmap) == 0:
-                        print("I do not see the goal object in the scene")
+                        print("I do not see the goal object in the scene 1")
                         nonlocal_variables['new_episode_flag'] = 1
                         robot.restart_sim()
                         robot.add_objects()
+
                         if is_testing: # If at end of test run, re-load original weights (before test run)
                             trainer.model.load_state_dict(torch.load(snapshot_file))
                         trainer.clearance_log.append([trainer.iteration])
@@ -195,17 +196,22 @@ def main(args):
                         if is_testing and len(trainer.clearance_log) >= max_test_trials:
                             exit_called = True # Exit after training thread (backprop and saving labels)
                         continue
-                    
-                best_push_conf = np.max(push_predictions)
-                best_grasp_conf = np.max(grasp_predictions)
+
+                # best_push_conf = np.max(push_predictions)
+                # best_grasp_conf = np.max(grasp_predictions)
+
+                best_push_conf, _ = utils.get_max_accumilation(push_predictions)
+                best_grasp_conf, _ = utils.get_max_accumilation(grasp_predictions)
                 nonlocal_variables['grasp_reward'] = best_grasp_conf
+                print("old np.max(grasp_predictions) 1:", np.max(grasp_predictions))
+                print("new val 1:", best_grasp_conf)
 
                 print('Primitive confidence scores: %f (push), %f (grasp)' % (best_push_conf, best_grasp_conf))
-                
+
                 # ------- Action selection --------
                 explore_actions = False
 
-                if stage == 'grasp_only':                   
+                if stage == 'grasp_only':
                     nonlocal_variables['primitive_action'] = 'grasp'
                     trainer.episode_log.append([nonlocal_variables['episode']])
                     logger.write_to_log('episode', trainer.episode_log)
@@ -254,18 +260,24 @@ def main(args):
                 # If heuristic bootstrapping is enabled: if change has not been detected more than 2 times, execute heuristic algorithm to detect grasps/pushes
                 # NOTE: typically not necessary and can reduce final performance.
                 if heuristic_bootstrap and nonlocal_variables['primitive_action'] == 'push' and no_change_count[0] >= 2:
+                    print("KM* I am not sure how this parts work")
                     print('Change not detected for more than two pushes. Running heuristic pushing.')
                     nonlocal_variables['best_pix_ind'] = trainer.push_heuristic(valid_depth_heightmap)
                     no_change_count[0] = 0
                     predicted_value = push_predictions[nonlocal_variables['best_pix_ind']]
                     use_heuristic = True
+                    print("I have put assert() here as I think this part need to be validated what it does, if it is valid you can take it off")
+                    assert()
 
                 elif heuristic_bootstrap and nonlocal_variables['primitive_action'] == 'grasp' and no_change_count[1] >= 2:
+                    print("KM* I am not sure how this parts work")
                     print('Change not detected for more than two grasps. Running heuristic grasping.')
                     nonlocal_variables['best_pix_ind'] = trainer.grasp_heuristic(valid_depth_heightmap)
                     no_change_count[1] = 0
                     predicted_value = grasp_predictions[nonlocal_variables['best_pix_ind']]
                     use_heuristic = True
+                    print("I have put assert() here as I think this part need to be validated what it does, if it is valid you can take it off")
+                    assert()
                 else:
                     use_heuristic = False
 
@@ -275,8 +287,9 @@ def main(args):
                         mask = np.float32(robot.mask_all_obj(color_heightmap))
                         push_predictions = np.multiply(push_predictions, mask) / 255
 
-                        nonlocal_variables['best_pix_ind'] = np.unravel_index(np.argmax(push_predictions), push_predictions.shape)
-                        predicted_value = np.max(push_predictions)
+                        # nonlocal_variables['best_pix_ind'] = np.unravel_index(np.argmax(push_predictions), push_predictions.shape)
+                        # predicted_value = np.max(push_predictions)
+                        predicted_value, nonlocal_variables['best_pix_ind'] = utils.get_max_accumilation(push_predictions)
 
                     elif nonlocal_variables['primitive_action'] == 'grasp':
                         # if goal_conditioned:
@@ -299,8 +312,11 @@ def main(args):
                             nonlocal_variables['new_episode_flag'] = 1
                             nonlocal_variables['restart_scene'] = robot.num_obj / 2
 
-                        nonlocal_variables['best_pix_ind'] = np.unravel_index(np.argmax(grasp_predictions), grasp_predictions.shape)
-                        predicted_value = np.max(grasp_predictions)
+                        # nonlocal_variables['best_pix_ind'] = np.unravel_index(np.argmax(grasp_predictions), grasp_predictions.shape)
+                        # predicted_value = np.max(grasp_predictions)
+                        predicted_value, nonlocal_variables['best_pix_ind'] = utils.get_max_accumilation(grasp_predictions)
+                        print("old indx 2:", np.unravel_index(np.argmax(grasp_predictions), grasp_predictions.shape))
+                        print("new val indx 2: ", predicted_value, nonlocal_variables['best_pix_ind'])
 
                 trainer.use_heuristic_log.append([1 if use_heuristic else 0])
                 logger.write_to_log('use-heuristic', trainer.use_heuristic_log)
@@ -340,13 +356,13 @@ def main(args):
 
                             obj_grasp_predictions = utils.get_obj_grasp_predictions(grasp_predictions, mask_all, num_obj)
                             mask_all = robot.mask_all_obj(prev_img)
-                            
+
                             prev_single_predictions = [np.max(obj_grasp_predictions[i]) for i in range(len(obj_grasp_predictions))]
-                            print('reward of grasping before pushing: ', prev_single_predictions) 
+                            print('reward of grasping before pushing: ', prev_single_predictions)
 
                             # Get occupy ratio before pushing
                             if goal_conditioned:
-                                prev_occupy_ratio = utils.get_occupy_ratio(goal_mask_heightmap, depth_heightmap)      
+                                prev_occupy_ratio = utils.get_occupy_ratio(goal_mask_heightmap, depth_heightmap)
 
                 # Save executed primitive
                 if nonlocal_variables['primitive_action'] == 'push':
@@ -377,7 +393,7 @@ def main(args):
                     nonlocal_variables['push_success'] = robot.grasp_non_goal_obj(primitive_position, best_rotation_angle, workspace_limits)
                     print('Grasp obstacles: %r' % (nonlocal_variables['push_success']))
                     trainer.grasp_obj_log.append([-1])
-                    logger.write_to_log('grasp-obj', trainer.grasp_obj_log) 
+                    logger.write_to_log('grasp-obj', trainer.grasp_obj_log)
                     if stage == 'push_only':
                         if best_grasp_conf <= grasp_reward_threshold and nonlocal_variables['push_step'] < max_push_episode_length:
                             # Get latest RGB-D image
@@ -388,8 +404,8 @@ def main(args):
                             latest_color_heightmap, latest_depth_heightmap = utils.get_heightmap(latest_color_img, latest_depth_img, robot.cam_intrinsics, robot.cam_pose, workspace_limits, heightmap_resolution)
                             latest_valid_depth_heightmap = latest_depth_heightmap.copy()
                             latest_valid_depth_heightmap[np.isnan(latest_valid_depth_heightmap)] = 0
-                            
-                            # Get goal mask heightmap 
+
+                            # Get goal mask heightmap
                             if grasp_goal_conditioned or goal_conditioned:
 
                                 # obj_contour = robot.obj_contour(nonlocal_variables['goal_obj_idx'])
@@ -400,7 +416,7 @@ def main(args):
                                 latest_push_predictions, latest_grasp_predictions, latest_state_feat = trainer.forward(latest_color_heightmap, latest_valid_depth_heightmap, is_volatile=True)
                             else:
                                 latest_push_predictions, latest_grasp_predictions, latest_state_feat = trainer.goal_forward(latest_color_heightmap, latest_valid_depth_heightmap, latest_goal_mask_heightmap, is_volatile=True)
-                            
+
                             # Get grasp reward after pushing
                             if goal_conditioned:
 
@@ -411,7 +427,7 @@ def main(args):
 
                                 latest_obj_grasp_prediction = np.multiply(latest_grasp_predictions, mask)
                                 latest_grasp_predictions = latest_obj_grasp_prediction / 255
-                             
+
                             img = latest_color_heightmap
                             mask_all = []
                             for obj_id in range(num_obj):
@@ -423,7 +439,7 @@ def main(args):
                             single_predictions = [np.max(obj_grasp_predictions[i]) for i in range(len(obj_grasp_predictions))]
                             print('reward of grasping after pushing: ', single_predictions)
 
-                            # Get improved grasp reward by pushing 
+                            # Get improved grasp reward by pushing
                             improved_grasp_reward = [single_predictions[i] - prev_single_predictions[i] for i in range(len(single_predictions))]
                             print('expected reward of pushing(improved grasp reward)', improved_grasp_reward)
                             if not grasp_goal_conditioned:
@@ -449,23 +465,23 @@ def main(args):
                         nonlocal_variables['push_step'] += 1
 
                 elif nonlocal_variables['primitive_action'] == 'grasp':
-                    nonlocal_variables['grasp_success'], color_image, depth_image, color_height_map, depth_height_map, grasped_object_ind = robot.grasp(primitive_position, best_rotation_angle, workspace_limits)                  
+                    nonlocal_variables['grasp_success'], color_image, depth_image, color_height_map, depth_height_map, grasped_object_ind = robot.grasp(primitive_position, best_rotation_angle, workspace_limits)
                     print('Grasp successful: %r' % (nonlocal_variables['grasp_success']))
-                    writer.add_scalar('grasp success', nonlocal_variables['grasp_success'], nonlocal_variables['episode'])   
-                    
+                    writer.add_scalar('grasp success', nonlocal_variables['grasp_success'], nonlocal_variables['episode'])
+
                     if nonlocal_variables['grasp_success']:
                         print('Grasp object: %d' % grasped_object_ind)
                         trainer.grasp_obj_log.append([grasped_object_ind])
-                        logger.write_to_log('grasp-obj', trainer.grasp_obj_log) 
+                        logger.write_to_log('grasp-obj', trainer.grasp_obj_log)
                     else:
                         trainer.grasp_obj_log.append([-1])
-                        logger.write_to_log('grasp-obj', trainer.grasp_obj_log) 
+                        logger.write_to_log('grasp-obj', trainer.grasp_obj_log)
 
                     # update episode
                     nonlocal_variables['episode'] += 1
                     if stage == 'push_only':
                         writer.add_scalar('episode improved grasp reward', nonlocal_variables['episode_improved_grasp_reward'], nonlocal_variables['episode'])
-                        nonlocal_variables['episode_improved_grasp_reward'] = 0                        
+                        nonlocal_variables['episode_improved_grasp_reward'] = 0
                         # update push step
                         print('step %d in episode (five pushes correspond one episode)' % nonlocal_variables['push_step'])
                         writer.add_scalar('episode push step', nonlocal_variables['push_step'], nonlocal_variables['episode'])
@@ -478,16 +494,18 @@ def main(args):
                                 nonlocal_variables['goal_catched'] = 1
                                 print('Goal object catched!')
                                 nonlocal_variables['new_episode_flag'] = 1
+                                robot.restart_sim()
+                                robot.add_objects()
                                 if is_testing:
                                     nonlocal_variables['restart_scene'] = robot.num_obj / 2
-                                
+
                             else:
                                 nonlocal_variables['goal_catched'] = 0.5
                                 print('A different goal catched! Change the goal object index to', grasped_object_ind)
                                 if not is_testing:
                                     nonlocal_variables['goal_obj_idx'] = grasped_object_ind
                                     nonlocal_variables['new_episode_flag'] = 1
-                                                   
+
                         else:
                             nonlocal_variables['goal_catched'] = 0
                         writer.add_scalar('episode goal catched', nonlocal_variables['goal_catched'], nonlocal_variables['episode'])
@@ -538,7 +556,7 @@ def main(args):
         # Save RGB-D images and RGB-D heightmaps
         logger.save_images(trainer.iteration, color_img, depth_img, '0')
         logger.save_heightmaps(trainer.iteration, color_heightmap, valid_depth_heightmap, '0')
-                
+
         writer.add_image('goal_mask_heightmap', cv2.cvtColor(goal_mask_heightmap, cv2.COLOR_BGR2RGB), global_step=trainer.iteration, walltime=None, dataformats='HWC')
         logger.save_visualizations(trainer.iteration, goal_mask_heightmap, 'mask')
         cv2.imwrite('visualization.mask.png', goal_mask_heightmap)
@@ -590,7 +608,7 @@ def main(args):
             continue
 
         trainer.push_step_log.append([nonlocal_variables['push_step']])
-        logger.write_to_log('push-step', trainer.push_step_log)              
+        logger.write_to_log('push-step', trainer.push_step_log)
 
         if not exit_called:
             if stage == 'grasp_only' and grasp_explore:
@@ -614,7 +632,7 @@ def main(args):
                     push_predictions, grasp_predictions, state_feat = trainer.forward(color_heightmap, valid_depth_heightmap, is_volatile=True)
                 else:
                     push_predictions, grasp_predictions, state_feat = trainer.goal_forward(color_heightmap, valid_depth_heightmap, goal_mask_heightmap, is_volatile=True)
-            
+
             nonlocal_variables['push_predictions'] = push_predictions
             nonlocal_variables['grasp_predictions'] = grasp_predictions
 
@@ -636,7 +654,7 @@ def main(args):
                 change_threshold = 50
                 change_value = utils.get_change_value(depth_diff)
                 change_detected = change_value > change_threshold
-                print('Goal change detected: %r (value: %d)' % (change_detected, change_value)) 
+                print('Goal change detected: %r (value: %d)' % (change_detected, change_value))
 
             if change_detected:
                 if prev_primitive_action == 'push':
@@ -653,7 +671,7 @@ def main(args):
             if not grasp_goal_conditioned:
                 label_value, prev_reward_value = trainer.get_label_value(prev_primitive_action, prev_grasp_success, prev_grasp_reward, prev_improved_grasp_reward, change_detected, color_heightmap, valid_depth_heightmap)
             else:
-                label_value, prev_reward_value = trainer.get_label_value(prev_primitive_action, prev_grasp_success, prev_grasp_reward, prev_improved_grasp_reward, change_detected, color_heightmap, valid_depth_heightmap, 
+                label_value, prev_reward_value = trainer.get_label_value(prev_primitive_action, prev_grasp_success, prev_grasp_reward, prev_improved_grasp_reward, change_detected, color_heightmap, valid_depth_heightmap,
                 goal_mask_heightmap, nonlocal_variables['goal_catched'], nonlocal_variables['decreased_occupy_ratio'])
 
             trainer.label_value_log.append([label_value])
@@ -672,7 +690,7 @@ def main(args):
             if nonlocal_variables['push_step'] == max_push_episode_length or nonlocal_variables['new_episode_flag'] == 1:
                 writer.add_scalar('episode loss', episode_loss, nonlocal_variables['episode'])
                 episode_loss = 0
-            
+
             # Adjust exploration probability
             if not is_testing:
                 explore_prob = max(0.5 * np.power(0.9998, trainer.iteration),0.1) if explore_rate_decay else 0.5
@@ -695,9 +713,9 @@ def main(args):
                 if not grasp_goal_conditioned or sample_primitive_action == 'push':
                     sample_ind = np.argwhere(np.logical_and(np.asarray(trainer.reward_value_log)[0:trainer.iteration,0] == sample_reward_value, np.asarray(trainer.executed_action_log)[0:trainer.iteration,0] == sample_primitive_action_id))
                 else:
-                    sample_ind = np.argwhere(np.logical_and(np.asarray(trainer.reward_value_log)[0:trainer.iteration,0] == sample_reward_value, 
+                    sample_ind = np.argwhere(np.logical_and(np.asarray(trainer.reward_value_log)[0:trainer.iteration,0] == sample_reward_value,
                     np.asarray(trainer.grasp_obj_log)[0:trainer.iteration,0] == sample_goal_obj_idx))
-                   
+
                 if sample_ind.size > 0:
                     print('reward_value_log:', np.asarray(trainer.reward_value_log)[sample_ind[:,0], 0])
                     # Find sample with highest surprise value
@@ -714,13 +732,13 @@ def main(args):
                     sample_color_heightmap = cv2.cvtColor(sample_color_heightmap, cv2.COLOR_BGR2RGB)
                     sample_depth_heightmap = cv2.imread(os.path.join(logger.depth_heightmaps_directory, '%06d.0.depth.png' % (sample_iteration)), -1)
                     sample_depth_heightmap = sample_depth_heightmap.astype(np.float32)/100000
-                    
+
                     if grasp_goal_conditioned or goal_conditioned:
 
                         # obj_contour = robot.obj_contour(nonlocal_variables['goal_obj_idx'])
                         sample_goal_mask_heightmap = robot.mask(color_heightmap, goal_object)
                         sample_goal_mask_heightmap = np.float32(sample_goal_mask_heightmap)
-                        
+
                         writer.add_image('goal_mask_heightmap', cv2.cvtColor(sample_goal_mask_heightmap, cv2.COLOR_BGR2RGB), global_step=trainer.iteration, walltime=None, dataformats='HWC')
 
                     # Compute forward pass with sample
@@ -733,7 +751,7 @@ def main(args):
                     sample_grasp_success = sample_reward_value == 1
                     # Get labels for sample and backpropagate
                     sample_best_pix_ind = (np.asarray(trainer.executed_action_log)[sample_iteration,1:4]).astype(int)
-                    if not grasp_goal_conditioned:  
+                    if not grasp_goal_conditioned:
                         trainer.backprop(sample_color_heightmap, sample_depth_heightmap, sample_primitive_action, sample_best_pix_ind, trainer.label_value_log[sample_iteration])
                     else:
                         trainer.backprop(sample_color_heightmap, sample_depth_heightmap, sample_primitive_action, sample_best_pix_ind, trainer.label_value_log[sample_iteration], sample_goal_mask_heightmap)
@@ -813,7 +831,7 @@ if __name__ == '__main__':
     parser.add_argument('--test_preset_cases', dest='test_preset_cases', action='store_true', default=False)
     parser.add_argument('--test_preset_file', dest='test_preset_file', action='store', default='test-10-obj-01.txt')
     parser.add_argument('--random_scene_testing', dest='random_scene_testing', action='store_true', default=False)
-    
+
     # -------------- Goal-conditioned options --------------
     parser.add_argument('--goal_obj_idx', dest='goal_obj_idx', type=int, action='store', default=2)
     parser.add_argument('--goal_conditioned', dest='goal_conditioned', action='store_true', default=False)

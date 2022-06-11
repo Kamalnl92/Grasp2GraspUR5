@@ -371,6 +371,30 @@ def get_change_value(depth_diff):
     change_value = np.sum(depth_diff)
     return change_value
 
+def get_max_accumilation(img):
+
+    numberOfHM = np.size(img, 0)
+    SumOfEachHM = [sum(sum(img[heatNumber])) for heatNumber in range(0,numberOfHM)]
+    maxRotationIdx = np.argmax(SumOfEachHM)
+    maxRotationHM = img[maxRotationIdx]
+
+    rowSum = np.sum(maxRotationHM,axis=1)
+    colSum = np.sum(maxRotationHM,axis=0)
+    maxRowVal = np.max(rowSum)
+    maxColVal = np.max(colSum)
+    rowLoc = np.where(maxRowVal == rowSum)[0][0]
+    colLoc = np.where(maxColVal == colSum)[0][0]
+    accumulationVal = maxRotationHM[rowLoc][colLoc]
+    indx = (maxRotationIdx, rowLoc, colLoc)
+
+    # file = open("max.txt", "w+")
+    #
+    # # Saving the array in a text file
+    # content = str(maxRotationHM)
+    # file.write(content)
+    # file.close()
+
+    return accumulationVal, indx
 
 # Cross entropy loss for 2D outputs
 class CrossEntropyLoss2d(nn.Module):
