@@ -538,6 +538,9 @@ class Robot(object):
             except:
                 time.sleep(10)
                 print("Failed to Get get_camera_data", maxAttemptsToGetPosition-attemp)
+                self.restart_sim()
+                self.add_objects()
+                self.get_camera_data()
 
         return color_img, depth_img
 
