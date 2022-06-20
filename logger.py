@@ -4,7 +4,7 @@ import os
 import numpy as np
 import cv2
 import torch 
-
+import shutil
 class Logger():
 
     def __init__(self, continue_logging, logging_directory):
@@ -102,8 +102,12 @@ class Logger():
     def save_model(self, iteration, model, name):
         torch.save(model.state_dict(), os.path.join(self.models_directory, 'snapshot-%06d.%s.pth' % (iteration, name)))
 
-    def save_backup_model(self, model, name):
+    def save_backup_model(self, model, name, iteration, optimizerState):
         torch.save(model.state_dict(), os.path.join(self.models_directory, 'snapshot-backup.%s.pth' % (name)))
+        checkpoint = {'epoch': iteration, 'state_dict': model.state_dict(), 'optimizer': optimizerState}
+        checkpoint_dir = '/home/s3675319/grasp2grasp/Grasp2GraspUR5/'
+        model_dir = checkpoint_dir
+        self.save_ckp(checkpoint, checkpoint_dir, model_dir)
 
     def save_visualizations(self, iteration, affordance_vis, name):
         cv2.imwrite(os.path.join(self.visualizations_directory, '%06d.%s.png' % (iteration,name)), affordance_vis)
@@ -119,3 +123,9 @@ class Logger():
         cv2.imwrite(os.path.join(self.transitions_directory, 'data', '%06d.0.depth.png' % (iteration)), depth_heightmap)
         next_depth_heightmap = np.round(transition.next_state * 100000).astype(np.uint16) # Save depth in 1e-5 meters
         cv2.imwrite(os.path.join(self.transitions_directory, 'data', '%06d.1.depth.png' % (iteration)), next_depth_heightmap)
+
+    def save_ckp(self, state, checkpoint_dir, best_model_dir):
+        f_path = checkpoint_dir + 'checkpoint.pt'
+        torch.save(state, f_path)
+        best_fpath = best_model_dir + 'best_model.pt'
+        shutil.copyfile(f_path, best_fpath)

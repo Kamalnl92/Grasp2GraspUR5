@@ -6,19 +6,21 @@ from torch.autograd import Variable
 from models import push_grasp_net, goal_conditioned_net
 from scipy import ndimage
 import matplotlib.pyplot as plt
-
+import torch
+import shutil
 
 class Trainer(object):
     def __init__(self, stage, future_reward_discount,
                  is_testing, load_snapshot, snapshot_file,
                  load_explore_snapshot, explore_snapshot_file, 
                  alternating_training, cooperative_training,
-                 force_cpu, grasp_goal_conditioned):
+                 force_cpu, grasp_goal_conditioned, continue_training):
 
         self.stage = stage
         self.grasp_goal_conditioned = grasp_goal_conditioned
         self.is_testing = is_testing
         self.alternating_training = alternating_training
+        self.continue_training = continue_training
 
         # Check if CUDA can be used
         if torch.cuda.is_available() and not force_cpu:
@@ -140,6 +142,30 @@ class Trainer(object):
         self.episode_log = []
         self.episode_improved_grasp_reward_log = []
 
+        #
+        # if continue_training:
+        #     print("-----------continue training")
+        #     checkpoint = torch.load("/home/kamal/Desktop/HPC/Grasp2GraspUR5/checkpoint.pt")
+        #     # self.model = torch.load("/home/kamal/Desktop/HPC/Grasp2GraspUR5/best_model.pt")
+        #     # print("len", len(checkpoint))
+        #     #
+        #     # for key, value in checkpoint.items():
+        #     #     print(key)
+        #     self.model.load_state_dict(checkpoint['state_dict'])
+        #     # initialize optimizer from checkpoint to optimizer
+        #     self.optimizer.load_state_dict(checkpoint['optimizer'])
+        # model = self.model()
+        # optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+
+        # continue training will overwrite previously newly constructed model
+        if continue_training:
+            checkpoint_fpath = "/home/s3675319/grasp2grasp/Grasp2GraspUR5/checkpoint.pt"
+
+            checkpoint = torch.load(checkpoint_fpath)
+            self.model.load_state_dict(checkpoint['state_dict'])
+            self.optimizer.load_state_dict(checkpoint['optimizer'])
+            # print("-------------")
+            # print(checkpoint['epoch'])
 
     # Pre-load execution info and RL variables
     def preload(self, transitions_directory):
@@ -568,6 +594,7 @@ class Trainer(object):
             print('Training loss: %f' % (loss_value))
             self.optimizer.step()
 
+
         elif self.stage == 'push_grasp':
 
             # Compute labels
@@ -638,9 +665,15 @@ class Trainer(object):
 
                 loss_value = loss_value/2
 
-            print('Training loss: %f' % (loss_value))
-            self.optimizer.step()
-        return loss_value
+        print('Training loss: %f' % (loss_value))
+        self.optimizer.step()
+        # print("Optimizer's state_dict:")
+        # for var_name in self.optimizer.state_dict():
+        #     print(var_name, "\t", self.optimizer.state_dict()[var_name])
+        # print("-----------")
+        # print(type(self.optimizer.state_dict()))
+
+        return loss_value, self.optimizer.state_dict()
 
 
     def get_prediction_vis(self, predictions, color_heightmap, best_pix_ind):
@@ -749,4 +782,5 @@ class Trainer(object):
 
         best_pix_ind = np.unravel_index(np.argmax(grasp_predictions), grasp_predictions.shape)
         return best_pix_ind
+
 

@@ -1,3 +1,6 @@
 /venv/
 JointPushGraspModel.pth
 /logs
+best_model.pt
+checkpoint.pt
+GraspExp.pth

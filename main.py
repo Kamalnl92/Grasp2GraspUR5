@@ -60,7 +60,10 @@ def main(args):
     else:
         logging_directory = args.logging_directory
     save_visualizations = args.save_visualizations # Save visualizations of FCN predictions? Takes 0.6s per training step if set to True
-    
+
+    # continue training
+    continue_training = args.continue_training
+
     # ------- Goal-conditioned grasp net explore options ---------
     load_explore_snapshot = args.load_explore_snapshot # Load pre-trained snapshot of model?
     explore_snapshot_file = os.path.abspath(args.explore_snapshot_file) if load_explore_snapshot else None
@@ -78,16 +81,17 @@ def main(args):
                   goal_conditioned, grasp_goal_conditioned)
 
     # Initialize trainer
+    print("continue_training", continue_training)
     trainer = Trainer(stage, future_reward_discount,
                       is_testing, load_snapshot, snapshot_file, 
                       load_explore_snapshot, explore_snapshot_file,
                       alternating_training, cooperative_training,
-                      force_cpu, grasp_goal_conditioned)
+                      force_cpu, grasp_goal_conditioned, continue_training)
 
     # Initialize data logger
     logger = Logger(continue_logging, logging_directory)
     logger.save_heightmap_info(workspace_limits, heightmap_resolution) # Save heightmap parameters
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        
+    optimizerState = {}
     # Find last executed iteration of pre-loaded log, and load execution info and RL variables
     if continue_logging:
         trainer.preload(logger.transitions_directory)
@@ -681,9 +685,9 @@ def main(args):
 
             # Backpropagate
             if not grasp_goal_conditioned:
-                loss = trainer.backprop(prev_color_heightmap, prev_valid_depth_heightmap, prev_primitive_action, prev_best_pix_ind, label_value)
+                loss, optimizerState = trainer.backprop(prev_color_heightmap, prev_valid_depth_heightmap, prev_primitive_action, prev_best_pix_ind, label_value)
             else:
-                loss = trainer.backprop(prev_color_heightmap, prev_valid_depth_heightmap, prev_primitive_action, prev_best_pix_ind, label_value, prev_goal_mask_heightmap)
+                loss, optimizerState = trainer.backprop(prev_color_heightmap, prev_valid_depth_heightmap, prev_primitive_action, prev_best_pix_ind, label_value, prev_goal_mask_heightmap)
             writer.add_scalar('loss', loss, trainer.iteration)
 
             episode_loss += loss
@@ -752,9 +756,9 @@ def main(args):
                     # Get labels for sample and backpropagate
                     sample_best_pix_ind = (np.asarray(trainer.executed_action_log)[sample_iteration,1:4]).astype(int)
                     if not grasp_goal_conditioned:
-                        trainer.backprop(sample_color_heightmap, sample_depth_heightmap, sample_primitive_action, sample_best_pix_ind, trainer.label_value_log[sample_iteration])
+                        loss, optimizerState = trainer.backprop(sample_color_heightmap, sample_depth_heightmap, sample_primitive_action, sample_best_pix_ind, trainer.label_value_log[sample_iteration])
                     else:
-                        trainer.backprop(sample_color_heightmap, sample_depth_heightmap, sample_primitive_action, sample_best_pix_ind, trainer.label_value_log[sample_iteration], sample_goal_mask_heightmap)
+                        loss, optimizerState = trainer.backprop(sample_color_heightmap, sample_depth_heightmap, sample_primitive_action, sample_best_pix_ind, trainer.label_value_log[sample_iteration], sample_goal_mask_heightmap)
 
                     # Recompute prediction value and label for replay buffer
                     if sample_primitive_action == 'push':
@@ -767,7 +771,7 @@ def main(args):
 
             # Save model snapshot
             if not is_testing:
-                logger.save_backup_model(trainer.model, stage)
+                logger.save_backup_model(trainer.model, stage, trainer.iteration, optimizerState)
                 if trainer.iteration % 50 == 0:
                     logger.save_model(trainer.iteration, trainer.model, stage)
                     if trainer.use_cuda:
@@ -849,6 +853,8 @@ if __name__ == '__main__':
     parser.add_argument('--alternating_training', dest='alternating_training', action='store_true', default=False)
     parser.add_argument('--cooperative_training', dest='cooperative_training', action='store_true', default=False)
 
+    # ------ continue training options ------
+    parser.add_argument('--continue_training', dest='continue_training', action='store_true', default=False,                help='continue_training from previous session?')
     # Run main program with specified arguments
     args = parser.parse_args()
     main(args)
