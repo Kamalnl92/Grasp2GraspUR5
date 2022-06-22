@@ -167,7 +167,7 @@ def main(args):
                     grasp_predictions = obj_grasp_prediction / 255
 
                     # for the test
-                    maskPush = np.float32(robot.mask_all_obj(color_heightmap))
+                    maskPush = np.float32(robot.mask_all_obj(color_heightmap, goal_object))
                     push_predictions = np.multiply(push_predictions, maskPush)
                     push_predictions = push_predictions / 255
 
@@ -288,7 +288,7 @@ def main(args):
                     # Get pixel location and rotation with highest affordance prediction from heuristic algorithms (rotation, y, x)
                     if nonlocal_variables['primitive_action'] == 'push':
                         #keo
-                        mask = np.float32(robot.mask_all_obj(color_heightmap))
+                        mask = np.float32(robot.mask_all_obj(color_heightmap, goal_object))
                         push_predictions = np.multiply(push_predictions, mask) / 255
 
                         # nonlocal_variables['best_pix_ind'] = np.unravel_index(np.argmax(push_predictions), push_predictions.shape)
@@ -359,7 +359,7 @@ def main(args):
                                 mask_all.append(np.float32(robot.mask(prev_img, obj_id)))
 
                             obj_grasp_predictions = utils.get_obj_grasp_predictions(grasp_predictions, mask_all, num_obj)
-                            mask_all = robot.mask_all_obj(prev_img)
+                            mask_all = robot.mask_all_obj(prev_img, goal_object)
 
                             prev_single_predictions = [np.max(obj_grasp_predictions[i]) for i in range(len(obj_grasp_predictions))]
                             print('reward of grasping before pushing: ', prev_single_predictions)
@@ -438,7 +438,7 @@ def main(args):
                                 mask_all.append(np.float32(robot.mask(img, obj_id)))
 
                             obj_grasp_predictions = utils.get_obj_grasp_predictions(grasp_predictions, mask_all, num_obj)
-                            mask_all = robot.mask_all_obj(img)
+                            mask_all = robot.mask_all_obj(img, goal_object)
 
                             single_predictions = [np.max(obj_grasp_predictions[i]) for i in range(len(obj_grasp_predictions))]
                             print('reward of grasping after pushing: ', single_predictions)
@@ -811,8 +811,8 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Train robotic agents to learn how to plan complementary pushing and grasping actions for manipulation with deep reinforcement learning in PyTorch.')
-
-    # --------------- Setup options ---------------
+                                                                                        # /home/kamal/Desktop/HPC/Grasp2GraspUR5/objects/highBlocksThinner
+    # --------------- Setup options ---------------                                     #/home/s3675319/grasp2grasp/Grasp2GraspUR5/objects/highBlocksThinner
     parser.add_argument('--obj_mesh_dir', dest='obj_mesh_dir', action='store', default='/home/s3675319/grasp2grasp/Grasp2GraspUR5/objects/highBlocksThinner',                  help='directory containing 3D mesh files (.obj) of objects to be added to simulation')
     parser.add_argument('--num_obj', dest='num_obj', type=int, action='store', default=7,                                help='number of objects to add to simulation')
     parser.add_argument('--heightmap_resolution', dest='heightmap_resolution', type=float, action='store', default=0.002, help='meters per pixel of heightmap')

@@ -429,10 +429,10 @@ class Trainer(object):
 
             # Compute current reward
             if primitive_action == 'push':
-                if improved_grasp_reward > 0.1 and change_detected and decreased_occupy_ratio > 0.1:
+                if improved_grasp_reward > 0.1 and change_detected:# and decreased_occupy_ratio > 0.1:
                     # change of reward after pushing
                     current_reward = 0.5
-                elif not change_detected or not decreased_occupy_ratio > 0.1:
+                elif not change_detected:# or not decreased_occupy_ratio > 0.1:
                     current_reward = -0.5
                 else:
                     current_reward = 0

@@ -21,7 +21,7 @@ class Robot(object):
 
         # Define colors for object meshes (Tableau palette)
         self.color_space = np.asarray([[78.0, 121.0, 167.0], # blue
-                                        [156, 117, 95], # brown
+                                        # [156, 117, 95], # brown close to green in grey scale
                                         [242, 142, 43], # orange
                                         [237.0, 201.0, 72.0], # yellow
                                         [186, 176, 172], # gray
@@ -43,7 +43,7 @@ class Robot(object):
         self.color_space = np.insert(self.color_space, self.goal_object, green_color, axis=0)
 
         # color thresholds, small tip if you use CV2 to check the channel ranges, the r and b channels are swapped ;)
-        self.color_threshold = [[62, 79, 92, 120, 140, 157], [120, 145, 90, 120, 75, 94],
+        self.color_threshold = [[62, 79, 92, 120, 140, 157], #[120, 145, 90, 120, 75, 94],
                 [200, 210, 110, 125, 30, 45],[195, 215, 165, 180, 55, 70], [130, 150, 120, 150, 130, 156],
                  [215, 240, 68, 84, 68, 88], [140, 170, 90, 120, 130, 150], [95, 105, 148, 160, 145, 155],
                  [210, 235, 130, 150, 137, 155], [45, 55, 80, 95, 115, 135], [115, 136, 85, 110, 50, 70],
@@ -169,8 +169,8 @@ class Robot(object):
             obj_number = len(self.obj_mesh_ind)
 
         # 7 random positions from the saved location orientations
-        positions = np.random.choice(7, 7, replace=False)
-        scene = np.random.choice(32, 1, replace=False)
+        positions = np.random.choice(7, 7, replace=False)   # /home/kamal/Desktop/HPC/Grasp2GraspUR5/locationsOrientations.npy
+        scene = np.random.choice(32, 1, replace=False)  # /home/s3675319/grasp2grasp/Grasp2GraspUR5/locationsOrientations.npy
         scenePositions = np.load('/home/s3675319/grasp2grasp/Grasp2GraspUR5/locationsOrientations.npy')
         # flag = 0
         for object_idx in range(obj_number):
@@ -420,10 +420,35 @@ class Robot(object):
         return mask
 
 
-    def mask_all_obj(self, img):
+    def mask_all_obj(self, img, goal_object):
+        # threshold = self.color_threshold[goal_object]
+        # maskCh1 = np.where((img[:, :, 0] > threshold[0]) & (img[:, :, 0] < threshold[1]), 0, 1)
+        # maskCh2 = np.where((img[:, :, 1] > threshold[2]) & (img[:, :, 1] < threshold[3]), 0, 1)
+        # maskCh3 = np.where((img[:, :, 2] > threshold[4]) & (img[:, :, 2] < threshold[5]), 0, 1)
+        # mask = np.multiply(maskCh1, maskCh2)
+        # mask = np.multiply(mask, maskCh3)
+        # mask = mask*255
+
+        # cv2.imshow("masks", np.float32(mask))
+        # cv2.waitKey(0)
+        # cv2.detroyAllWindows()
         img_grey = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         masks = np.full_like(img_grey, 255)
-        masks[img_grey <= 55] = 0
+        masks[img_grey <= 55] = 0 # for all the colors
+        masks[img_grey == 109] = 0 # for the green color
+        masks[img_grey == 101] = 0 # for the green color
+        masks[img_grey == 100] = 0 # for the green color
+        masks[img_grey == 99] = 0 # for the green color
+        masks[img_grey == 97] = 0 # for the green color
+        masks[img_grey == 98] = 0 # for the green color
+        masks[img_grey == 96] = 0 # for the green color
+        masks[img_grey == 94] = 0 # for the green color
+        masks[img_grey == 87] = 0 # for the green color
+        cv2.imshow("img", img)
+        cv2.imshow("img_grey", img_grey)
+        cv2.imshow("masks", masks)
+        cv2.waitKey(0)
+        cv2.detroyAllWindows()
         return masks
 
     # def obj_contours(self):
