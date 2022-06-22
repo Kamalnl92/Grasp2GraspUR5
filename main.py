@@ -773,7 +773,7 @@ def main(args):
             if not is_testing:
                 logger.save_backup_model(trainer.model, stage, trainer.iteration, optimizerState)
                 if trainer.iteration % 50 == 0:
-                    logger.save_model(trainer.iteration, trainer.model, stage)
+                    logger.save_model(trainer.iteration, trainer.model, stage, optimizerState)
                     if trainer.use_cuda:
                         trainer.model = trainer.model.cuda()
 

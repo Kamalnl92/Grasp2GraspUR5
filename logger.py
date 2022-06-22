@@ -99,15 +99,16 @@ class Logger():
     def write_to_log(self, log_name, log):
         np.savetxt(os.path.join(self.transitions_directory, '%s.log.txt' % log_name), log, delimiter=' ')
 
-    def save_model(self, iteration, model, name):
+    def save_model(self, iteration, model, name, optimizerState):
         torch.save(model.state_dict(), os.path.join(self.models_directory, 'snapshot-%06d.%s.pth' % (iteration, name)))
+        checkpoint = {'epoch': iteration, 'state_dict': model.state_dict(), 'optimizer': optimizerState}
+        checkpoint_dir = os.path.join(self.models_directory, 'checkpoint-%06d.pt' % (iteration))
+        model_dir = checkpoint_dir
+        self.save_ckp(checkpoint, checkpoint_dir, model_dir)
 
     def save_backup_model(self, model, name, iteration, optimizerState):
         torch.save(model.state_dict(), os.path.join(self.models_directory, 'snapshot-backup.%s.pth' % (name)))
-        checkpoint = {'epoch': iteration, 'state_dict': model.state_dict(), 'optimizer': optimizerState}
-        checkpoint_dir = '/home/s3675319/grasp2grasp/Grasp2GraspUR5/'
-        model_dir = checkpoint_dir
-        self.save_ckp(checkpoint, checkpoint_dir, model_dir)
+
 
     def save_visualizations(self, iteration, affordance_vis, name):
         cv2.imwrite(os.path.join(self.visualizations_directory, '%06d.%s.png' % (iteration,name)), affordance_vis)
@@ -125,7 +126,7 @@ class Logger():
         cv2.imwrite(os.path.join(self.transitions_directory, 'data', '%06d.1.depth.png' % (iteration)), next_depth_heightmap)
 
     def save_ckp(self, state, checkpoint_dir, best_model_dir):
-        f_path = checkpoint_dir + 'checkpoint.pt'
+        f_path = checkpoint_dir #+ 'checkpoint.pt'
         torch.save(state, f_path)
-        best_fpath = best_model_dir + 'best_model.pt'
+        best_fpath = best_model_dir + 'useless.pt'
         shutil.copyfile(f_path, best_fpath)
