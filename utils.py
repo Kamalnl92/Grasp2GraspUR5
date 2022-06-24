@@ -381,8 +381,8 @@ def get_max_accumilation(img, grasp_goal):
 
         rowSum = np.sum(maxRotationHM,axis=1)
         colSum = np.sum(maxRotationHM,axis=0)
-        medianRowVal = np.median(rowSum)
-        medianColVal = np.median(colSum)
+        medianRowVal = np.max(rowSum)
+        medianColVal = np.max(colSum)
         rowLoc = np.where(medianRowVal == rowSum)[0][0]
         colLoc = np.where(medianColVal == colSum)[0][0]
         accumulationVal = maxRotationHM[rowLoc][colLoc]
