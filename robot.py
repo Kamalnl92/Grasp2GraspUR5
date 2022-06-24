@@ -444,11 +444,11 @@ class Robot(object):
         masks[img_grey == 96] = 0 # for the green color
         masks[img_grey == 94] = 0 # for the green color
         masks[img_grey == 87] = 0 # for the green color
-        cv2.imshow("img", img)
-        cv2.imshow("img_grey", img_grey)
-        cv2.imshow("masks", masks)
-        cv2.waitKey(0)
-        cv2.detroyAllWindows()
+        # cv2.imshow("img", img)
+        # cv2.imshow("img_grey", img_grey)
+        # cv2.imshow("masks", masks)
+        # cv2.waitKey(0)
+        # cv2.detroyAllWindows()
         return masks
 
     # def obj_contours(self):
@@ -752,7 +752,7 @@ class Robot(object):
 
     def grasp_non_goal_obj(self, position, heightmap_rotation_angle, workspace_limits):
 
-        print('Executing: grasp at (%f, %f, %f)' % (position[0], position[1], position[2]))
+        print('Executing: grasp NON goal at (%f, %f, %f)' % (position[0], position[1], position[2]))
         # Compute tool orientation from heightmap rotation angle
         tool_rotation_angle = (heightmap_rotation_angle % np.pi) - np.pi/2
         # Avoid collision with floor

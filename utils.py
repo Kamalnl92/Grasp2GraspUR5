@@ -371,21 +371,38 @@ def get_change_value(depth_diff):
     change_value = np.sum(depth_diff)
     return change_value
 
-def get_max_accumilation(img):
+def get_max_accumilation(img, grasp_goal):
 
-    numberOfHM = np.size(img, 0)
-    SumOfEachHM = [sum(sum(img[heatNumber])) for heatNumber in range(0,numberOfHM)]
-    maxRotationIdx = np.argmax(SumOfEachHM)
-    maxRotationHM = img[maxRotationIdx]
+    if grasp_goal:
+        numberOfHM = np.size(img, 0)
+        SumOfEachHM = [sum(sum(img[heatNumber])) for heatNumber in range(0,numberOfHM)]
+        maxRotationIdx = np.argmax(SumOfEachHM)
+        maxRotationHM = img[maxRotationIdx]
 
-    rowSum = np.sum(maxRotationHM,axis=1)
-    colSum = np.sum(maxRotationHM,axis=0)
-    maxRowVal = np.max(rowSum)
-    maxColVal = np.max(colSum)
-    rowLoc = np.where(maxRowVal == rowSum)[0][0]
-    colLoc = np.where(maxColVal == colSum)[0][0]
-    accumulationVal = maxRotationHM[rowLoc][colLoc]
-    indx = (maxRotationIdx, rowLoc, colLoc)
+        rowSum = np.sum(maxRotationHM,axis=1)
+        colSum = np.sum(maxRotationHM,axis=0)
+        medianRowVal = np.median(rowSum)
+        medianColVal = np.median(colSum)
+        rowLoc = np.where(medianRowVal == rowSum)[0][0]
+        colLoc = np.where(medianColVal == colSum)[0][0]
+        accumulationVal = maxRotationHM[rowLoc][colLoc]
+        indx = (maxRotationIdx, rowLoc, colLoc)
+
+    else:
+        numberOfHM = np.size(img, 0)
+        SumOfEachHM = [sum(sum(img[heatNumber])) for heatNumber in range(0,numberOfHM)]
+        maxRotationIdx = np.argmax(SumOfEachHM)
+        maxRotationHM = img[maxRotationIdx]
+
+        maxPoint = np.unravel_index(np.argmax(maxRotationHM, axis=None), maxRotationHM.shape)
+        # rowMax = np.max(maxRotationHM,axis=1)
+        # colMax = np.max(maxRotationHM,axis=0)
+        # medianRowVal = np.median(rowSum)
+        # medianColVal = np.median(colSum)
+        rowLoc = maxPoint[0] #np.where(medianRowVal == rowMax)[0][0]
+        colLoc = maxPoint[1] #np.where(medianColVal == colMax)[0][0]
+        accumulationVal = maxRotationHM[rowLoc][colLoc]
+        indx = (maxRotationIdx, rowLoc, colLoc)
 
     # file = open("max.txt", "w+")
     #

@@ -204,8 +204,8 @@ def main(args):
                 # best_push_conf = np.max(push_predictions)
                 # best_grasp_conf = np.max(grasp_predictions)
 
-                best_push_conf, _ = utils.get_max_accumilation(push_predictions)
-                best_grasp_conf, _ = utils.get_max_accumilation(grasp_predictions)
+                best_push_conf, _ = utils.get_max_accumilation(push_predictions, grasp_goal=False)
+                best_grasp_conf, _ = utils.get_max_accumilation(grasp_predictions, grasp_goal=True)
                 nonlocal_variables['grasp_reward'] = best_grasp_conf
                 print("old np.max(grasp_predictions) 1:", np.max(grasp_predictions))
                 print("new val 1:", best_grasp_conf)
@@ -248,6 +248,7 @@ def main(args):
                     else:
                         if best_push_conf > best_grasp_conf:
                             nonlocal_variables['primitive_action'] = 'push'
+                            Print("actiiiiiiion PUSH!")
 
                     explore_actions = np.random.uniform() < explore_prob
 
@@ -293,7 +294,7 @@ def main(args):
 
                         # nonlocal_variables['best_pix_ind'] = np.unravel_index(np.argmax(push_predictions), push_predictions.shape)
                         # predicted_value = np.max(push_predictions)
-                        predicted_value, nonlocal_variables['best_pix_ind'] = utils.get_max_accumilation(push_predictions)
+                        predicted_value, nonlocal_variables['best_pix_ind'] = utils.get_max_accumilation(push_predictions, grasp_goal=False)
 
                     elif nonlocal_variables['primitive_action'] == 'grasp':
                         # if goal_conditioned:
@@ -318,7 +319,7 @@ def main(args):
 
                         # nonlocal_variables['best_pix_ind'] = np.unravel_index(np.argmax(grasp_predictions), grasp_predictions.shape)
                         # predicted_value = np.max(grasp_predictions)
-                        predicted_value, nonlocal_variables['best_pix_ind'] = utils.get_max_accumilation(grasp_predictions)
+                        predicted_value, nonlocal_variables['best_pix_ind'] = utils.get_max_accumilation(grasp_predictions, grasp_goal=True)
                         print("old indx 2:", np.unravel_index(np.argmax(grasp_predictions), grasp_predictions.shape))
                         print("new val indx 2: ", predicted_value, nonlocal_variables['best_pix_ind'])
 
