@@ -226,12 +226,16 @@ def main(args):
                     logger.write_to_log('episode', trainer.episode_log)
                     # executing grasp if grasp reward exceeds reward threshold or push length exceeds max_push_episode_length
                     #if best_grasp_conf > grasp_reward_threshold or nonlocal_variables['push_step'] == max_push_episode_length:
-                    if best_grasp_conf > best_push_conf or nonlocal_variables['push_step'] == max_push_episode_length:
+                    print("I am going to grasp non goal")
+                    print("---------------")
+                    if best_grasp_conf > 2.1 or nonlocal_variables['push_step'] == max_push_episode_length:
+                        print("I am going to grasp goal")
                         nonlocal_variables['primitive_action'] = 'grasp'
                         nonlocal_variables['episode_grasp_reward'] = best_grasp_conf
                         nonlocal_variables['episode_ratio_of_grasp_to_push'] = best_grasp_conf / best_push_conf
 
                 elif stage == 'push_grasp':
+
                     # testing is more conservative for pushing, somewhat reduce ratio of grasping and pushing
                     nonlocal_variables['primitive_action'] = 'grasp'
                     if is_testing:
